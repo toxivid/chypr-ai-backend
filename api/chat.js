@@ -6,12 +6,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight request
+  // Handle preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -41,11 +40,26 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    const reply = data?.choices?.[0]?.message?.content || "";
 
+    // If OpenAI API returned an error
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data,
+        message: `OpenAI API returned status ${response.status}`
+      });
+    }
+
+    const reply = data?.choices?.[0]?.message?.content || "";
     res.status(200).json({ reply });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Backend error:", err);
+
+    // Send detailed error back to frontend for debugging
+    res.status(500).json({
+      error: err.message || err.toString(),
+      stack: err.stack || "No stack trace",
+      message: "Server encountered an error"
+    });
   }
 }
